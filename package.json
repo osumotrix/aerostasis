@@ -1,0 +1,11 @@
+{
+  "name": "aerostasis",
+  "private": true,
+  "description": "A 3D private jet FBO management game set at the General Aviation Terminal, Lagos.",
+  "scripts": {
+    "dev": "wrangler pages dev",
+    "db:init:local": "wrangler d1 execute aerostasis --local --file=schema.sql",
+    "db:init:remote": "wrangler d1 execute aerostasis --remote --file=schema.sql"
+  },
+  "devDependencies": { "wrangler": "^4.0.0" }
+}

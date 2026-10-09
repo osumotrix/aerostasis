@@ -1,0 +1,13 @@
+# Cloudflare Pages configuration. Pages reads this file on every Git deployment.
+name = "aerostasis"
+compatibility_date = "2025-09-01"
+pages_build_output_dir = "public"
+
+[vars]
+# OAuth client ID from Google Cloud Console (APIs & Services > Credentials). Not a secret.
+GOOGLE_CLIENT_ID = "550706745103-d7fj5hsjtokda0mtmi6cm5v7r0dg6rdk.apps.googleusercontent.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aerostasis"
+database_id = "bc5cf90e-385e-4fbd-b823-e767912591b2"
