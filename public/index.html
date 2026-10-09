@@ -470,6 +470,7 @@ table.lb{width:100%;border-collapse:collapse;font-size:13px}
 .dstars{display:flex;align-items:center;gap:8px;font-weight:600}
 .dstars .stars svg{width:20px;height:20px}
 @media (prefers-reduced-motion:reduce){.bub,.chip-r{animation:none}.typing .bub i{animation:none}.chat-log{scroll-behavior:auto}}
+svg.pt{border-radius:50%;overflow:hidden;display:block}
 </style>
 
 <div class="app">
@@ -2289,16 +2290,13 @@ function portraitSVG(o){
   const fab=o.fabric||rpick(r,ANKARA);
   const bg={ramp:['#E9EEF0','#C9D3D8'],engineer:['#F1E6DC','#D9C3B1'],csr:['#EEE6EC','#D6C3D0'],pilot:['#E6ECF4','#C4D0E0'],suit:['#ECEAE6','#CFCAC2'],mentor:['#F6EBC2','#E9CF74'],pax:['#EDE8E0','#D3C9BA']}[role]||['#E9EEF0','#C9D3D8'];
   const g=[];const P=s=>g.push(s);
-  P(`<defs><radialGradient id="${id}f" cx="42%" cy="34%" r="78%"><stop offset="0" stop-color="${sl}"/><stop offset=".55" stop-color="${sk}"/><stop offset="1" stop-color="${sd}"/></radialGradient>
-    <linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${bg[0]}"/><stop offset="1" stop-color="${bg[1]}"/></linearGradient>
-    <linearGradient id="${id}n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sd}"/><stop offset="1" stop-color="${sk}"/></linearGradient>
-    <clipPath id="${id}c"><circle cx="50" cy="50" r="50"/></clipPath></defs><g clip-path="url(#${id}c)"><rect width="100" height="100" fill="url(#${id}b)"/><g transform="translate(50 50) scale(1.24) translate(-50 -47)">`);
+  P(`<g><rect width="100" height="100" fill="${bg[0]}"/><rect y="52" width="100" height="48" fill="${bg[1]}" opacity=".85"/><g transform="translate(50 50) scale(1.24) translate(-50 -47)">`);
   // hair or scarf that sits behind the shoulders
   if(hair==='braids')P(`<path d="M${50-w-2} 40 C${50-w-6} 62 ${50-w-5} 82 ${50-w+2} 92 L${50-w+10} 90 C${50-w+6} 74 ${50-w+5} 58 ${50-w+6} 44 Z M${50+w+2} 40 C${50+w+6} 62 ${50+w+5} 82 ${50+w-2} 92 L${50+w-10} 90 C${50+w-6} 74 ${50+w-5} 58 ${50+w-6} 44 Z" fill="${hc}"/>`);
   if(hair==='hijab')P(`<path d="M${50-w-8} 46 C${50-w-9} 14 ${50+w+9} 14 ${50+w+8} 46 C${50+w+9} 66 ${50+w+16} 76 ${50+w+22} 100 L${50-w-22} 100 C${50-w-16} 76 ${50-w-9} 66 ${50-w-8} 46 Z" fill="${fab}"/>`);
   // body and uniform
   const shirt={ramp:o.shirt||'#23324A',engineer:'#E06A1E',csr:'#F4F2EE',pilot:'#F6F7F9',suit:'#F4F2EE',mentor:'#F4F2EE',pax:fab}[role]||'#23324A';
-  P(`<path d="M41 58 L41 76 Q50 82 59 76 L59 58 Z" fill="url(#${id}n)"/>`);
+  P(`<path d="M41 58 L41 76 Q50 82 59 76 L59 58 Z" fill="${sd}"/>`);
   P(`<path d="M4 100 C6 82 22 74 40 72 Q50 79 60 72 C78 74 94 82 96 100 Z" fill="${shirt}"/>`);
   if(role==='ramp'||role==='mentor'){const v=o.vest||(role==='mentor'?'#F07A1A':'#C8E63A');
     P(`<path d="M4 100 C6 84 18 76 33 73 L45 100 Z M96 100 C94 84 82 76 67 73 L55 100 Z" fill="${v}"/><path d="M8 92 L43 92 L44 95 L7 96 Z M92 92 L57 92 L56 95 L93 96 Z" fill="#E8EBEC" opacity=".9"/><path d="M39 72 L50 100 L61 72" fill="none" stroke="${v}" stroke-width="3" opacity=".7"/>`);
@@ -2316,7 +2314,7 @@ function portraitSVG(o){
   if(ear&&hair!=='wrap')P(`<circle cx="${50-w+0.6}" cy="${eyeY+9}" r="1.3" fill="#E1B84A"/><circle cx="${50+w-0.6}" cy="${eyeY+9}" r="1.3" fill="#E1B84A"/>`);
   // head
   const jw=5+jaw*4,chin=72+jaw*1.5;
-  P(`<path d="M${50-w} 47 C${50-w} 21 ${50+w} 21 ${50+w} 47 C${50+w} ${58+jaw*3} ${50+jw+3} ${chin} 50 ${chin} C${50-jw-3} ${chin} ${50-w} ${58+jaw*3} ${50-w} 47 Z" fill="url(#${id}f)"/>`);
+  P(`<path d="M${50-w} 47 C${50-w} 21 ${50+w} 21 ${50+w} 47 C${50+w} ${58+jaw*3} ${50+jw+3} ${chin} 50 ${chin} C${50-jw-3} ${chin} ${50-w} ${58+jaw*3} ${50-w} 47 Z" fill="${sk}"/><ellipse cx="44.5" cy="37" rx="11" ry="8.5" fill="${sl}" opacity=".38"/><ellipse cx="50" cy="${eyeY+13}" rx="4" ry="6" fill="${sl}" opacity=".18"/>`);
   P(`<path d="M${50-w+1} 52 C${50-w+3} 64 ${50-jw-2} ${chin-1} 50 ${chin-0.5} C${50+jw+2} ${chin-1} ${50+w-3} 64 ${50+w-1} 52 C${50+w-4} 66 ${50+jw} ${chin-3} 50 ${chin-3} C${50-jw} ${chin-3} ${50-w+4} 66 ${50-w+1} 52 Z" fill="${sd}" opacity=".35"/>`);
   P(`<ellipse cx="${50-11}" cy="${eyeY+9}" rx="5" ry="3" fill="${sl}" opacity=".25"/><ellipse cx="${50+11}" cy="${eyeY+9}" rx="5" ry="3" fill="${sl}" opacity=".25"/>`);
   // beard and stubble
@@ -2364,7 +2362,7 @@ function staffPortrait(st){const ramp={tug:{vest:'#F07A1A',shirt:'#2A2E36'},fuel
   const role=st.kind==='tech'?'engineer':st.kind==='csr'?'csr':'ramp';
   return portraitSVG(Object.assign({seed:st.first+' '+st.last,gender:FEM.has(st.first)?'f':'m',hijab:HIJAB.has(st.first),role},ramp||{},role==='ramp'?{headset:strHash(st.first)%3===0}:{}))}
 
-const MENTOR_SVG=portraitSVG({seed:'Amina Okeke',gender:'f',role:'mentor',hair:'wrap',fabric:'#1F6F86'});
+const MENTOR_SVG=portraitSVG({seed:'Amina Okeke',gender:'f',role:'mentor',hair:'wrap',fabric:'#1F6F86',skin:SKINS[2]});
 const MENTOR={name:'Amina Okeke',title:'Head of Ramp Operations'};
 const MGR={pilot:{title:'Former airline captain',blurb:'You know air traffic control inside out.',perk:'Start with 3.4 reputation. On-time departures earn 50% more reputation.'},
   engineer:{title:'Licensed engineer',blurb:'You have signed off more aircraft than you can count.',perk:'Line checks and detailing run 25% faster.'},
