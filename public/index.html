@@ -456,6 +456,7 @@ table.lb{width:100%;border-collapse:collapse;font-size:13px}
       </div>
       <button class="btn acct" id="acctBtn" data-act="account" hidden>Sign in</button>
       <button class="btn" id="sndBtn" aria-pressed="true">Sound on</button>
+      <button class="btn" id="musBtn" aria-pressed="true">Music on</button>
       <button class="btn primary" id="shopBtn">Office</button>
     </div>
   </header>
@@ -1283,6 +1284,7 @@ function renderTop(){const fn=$('#fboName');if(fn&&fn.textContent!==S.fboName)fn
   $('#repbar').innerHTML=[0,1,2,3,4].map(i=>`<i><u style="width:${clamp(S.rep-i,0,1)*100}%"></u></i>`).join('');
   const wn=$('#wxn');wn.textContent=WX_NAME[S.wx.cur];wn.className='wx '+S.wx.cur;
   const sb=$('#sndBtn');sb.textContent=SFX.on?'Sound on':'Sound off';sb.setAttribute('aria-pressed',String(SFX.on));
+  const mb=$('#musBtn');if(mb){const mo=SET.music!==false;mb.textContent=mo?'Music on':'Music off';mb.setAttribute('aria-pressed',String(mo))}
   const sp=S.paused?0:S.speed;['0','1','2','4','8'].forEach(k=>$('#sp'+k).setAttribute('aria-pressed',String(+k===sp)));
 }
 let resSig='';
@@ -1371,6 +1373,7 @@ function handleBtn(t){
   if(t.dataset.act&&ACC_ACTS[t.dataset.act]){ACC_ACTS[t.dataset.act]();return}
   if(t.dataset.speed!=null){const v=+t.dataset.speed;if(v===0)S.paused=true;else{S.speed=v;S.paused=false}renderTop();return}
   if(t.id==='sndBtn'){setSound(!SFX.on);return}
+  if(t.id==='musBtn'){setMusic(SET.music===false);return}
   if(t.id==='shopBtn'){openShop();return}
   if(t.dataset.tab){officeTab=t.dataset.tab;renderShop();return}
   if(t.dataset.supply){if(t.disabled)return;planSupply=t.dataset.supply;document.querySelectorAll('[data-supply]').forEach(b=>b.setAttribute('aria-pressed',String(b===t)));updateProj();return}
@@ -1444,6 +1447,7 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='f'||e.key==='F')toggleFly('flights');
   else if(e.key==='v'||e.key==='V')apFull();
   else if(e.key==='m'||e.key==='M')setSound(!SFX.on);
+  else if(e.key==='n'||e.key==='N')setMusic(SET.music===false);
 });
 
 /* best score */
@@ -1527,7 +1531,7 @@ function audioInit(){
     const b=ctx.createBuffer(1,n,ctx.sampleRate),bd=b.getChannelData(0);let l=0;for(let i=0;i<n;i++){l=(l+0.02*(Math.random()*2-1))/1.02;bd[i]=l*3.5}
     SFX.white=w;SFX.brown=b;
     SFX.beds.amb=bed('brown','lowpass',220,0.7);SFX.beds.rain=bed('white','bandpass',2200,0.5);SFX.beds.wind=bed('brown','bandpass',500,1.2,true);
-    setBed('amb',0.05);
+    setBed('amb',0.05);musicInit();
   }catch(e){SFX.ctx=null}
 }
 function bed(buf,ft,f,q,lfo){const ctx=SFX.ctx,src=ctx.createBufferSource();src.buffer=SFX[buf];src.loop=true;const fl=ctx.createBiquadFilter();fl.type=ft;fl.frequency.value=f;fl.Q.value=q;const g=ctx.createGain();g.gain.value=0;src.connect(fl);fl.connect(g);g.connect(SFX.master);src.start();
@@ -1552,6 +1556,68 @@ const SOUNDS={
   dayEnd(t){[392,494,587,784].forEach((f,i)=>osc('triangle',f,f,t+i*0.07,1.4,0.07,0.02))},
   thunder(t){noise('brown','lowpass',900,60,t,3.4,0.75,0.02,0.5);noise('brown','lowpass',300,40,t+0.4,3.2,0.6,0.3,0.5)}
 };
+
+/* ---------- music: an original, adaptive score generated with Web Audio ---------- */
+const MUS={bus:null,lay:{},dly:null,next:0,step:0,bar:-1,chordI:0,mood:'menu',prog:'menu',timer:null,gIdx:0};
+const nf=n=>440*Math.pow(2,(n-69)/12);
+const PROG={
+  menu:{bpm:84,ch:[[62,66,69,73],[59,62,66,69],[55,59,62,66],[57,61,64,67]]},
+  day:{bpm:96,ch:[[62,66,69,73],[59,62,66,69],[55,59,62,66],[57,61,64,67]]},
+  tense:{bpm:104,ch:[[62,66,69,72],[59,62,66,69],[55,59,62,65],[57,61,64,67]]},
+  storm:{bpm:86,ch:[[62,65,69,72],[58,62,65,69],[60,64,67,70],[57,60,64,67]]},
+  night:{bpm:78,ch:[[53,57,60,64],[52,55,59,62],[50,53,57,60],[48,52,55,59]]}};
+const MIXES={menu:{pad:.9,gtr:.35,bass:0,shk:0,kick:0,bell:0},day:{pad:.5,gtr:.7,bass:.8,shk:.5,kick:.55,bell:.45},
+  tense:{pad:.45,gtr:.75,bass:.9,shk:.7,kick:.75,bell:.55},storm:{pad:.95,gtr:.25,bass:.7,shk:.12,kick:.35,bell:0},night:{pad:.8,gtr:.5,bass:.5,shk:.12,kick:.15,bell:.2}};
+function musicInit(){const ctx=SFX.ctx;if(!ctx||MUS.bus)return;
+  MUS.bus=ctx.createGain();MUS.bus.gain.value=0;MUS.bus.connect(SFX.master);
+  for(const k of ['pad','gtr','bass','shk','kick','bell']){const g=ctx.createGain();g.gain.value=0;g.connect(MUS.bus);MUS.lay[k]=g}
+  const d=ctx.createDelay(1);d.delayTime.value=0.47;const fb=ctx.createGain();fb.gain.value=0.28;const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2400;
+  d.connect(lp);lp.connect(fb);fb.connect(d);lp.connect(MUS.lay.gtr);MUS.dly=d;
+  MUS.next=ctx.currentTime+0.1;MUS.timer=setInterval(musTick,50)}
+function setMusic(on){SET.music=on;saveSet();if(on)audioInit();renderTop();if(modalOpen()&&$('#modalCard .office')&&officeTab==='settings')renderShop();toast(on?'Music on':'Music off')}
+function musicMood(){if(!S||modalOpen()||S.between||touring||S.tut)return 'menu';
+  if(S.wx.cur==='storm')return 'storm';
+  if(S.jets.some(j=>j.lateMin>0.5&&['parked','ready','awaitTug','towing','taxiIn','holding'].includes(j.state)))return 'tense';
+  if(S.t>=1140||S.t<400)return 'night';return 'day'}
+function musTick(){const ctx=SFX.ctx;if(!ctx||!MUS.bus)return;
+  const on=SET.music!==false&&SFX.on&&!document.hidden;
+  MUS.bus.gain.setTargetAtTime(on?0.34*(SET.musicVol??0.5):0,ctx.currentTime,0.4);
+  if(!on){MUS.next=ctx.currentTime+0.1;return}
+  if(MUS.next<ctx.currentTime-0.3)MUS.next=ctx.currentTime+0.05;
+  while(MUS.next<ctx.currentTime+0.25){
+    if(MUS.step===0){MUS.bar++;if(MUS.bar%2===0){const m=musicMood();if(m!==MUS.mood){MUS.mood=m;const mx=MIXES[m];for(const k in mx)MUS.lay[k].gain.setTargetAtTime(mx[k],MUS.next,1.2)}
+        if(MUS.bar%4===0||PROG[MUS.prog].ch!==PROG[MUS.mood].ch)MUS.prog=MUS.mood;MUS.chordI=Math.floor(MUS.bar/2)%4}}
+    const p=PROG[MUS.prog],spb=60/p.bpm/4,sw=MUS.step%2?spb*0.14:0;
+    musStep(MUS.step,MUS.next+sw,spb,p.ch[MUS.chordI]);
+    MUS.next+=spb;MUS.step=(MUS.step+1)%16}}
+function mOsc(type,freq,t,dur,peak,dest,a=0.005,detune=0){const ctx=SFX.ctx,o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.value=freq;o.detune.value=detune;
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(g);g.connect(dest);o.start(t);o.stop(t+dur+0.05);return g}
+function musStep(st,t,spb,ch){const ctx=SFX.ctx,m=MUS.mood,L=MUS.lay;
+  // pad: a soft chord every two bars
+  if(st===0&&MUS.bar%2===0){const dur=spb*32;const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=m==='storm'?520:m==='night'?650:850;f.Q.value=0.5;f.connect(L.pad);
+    for(const n of ch){for(const dt of [-7,7]){const o=ctx.createOscillator(),g=ctx.createGain();o.type='sawtooth';o.frequency.value=nf(n);o.detune.value=dt;
+      g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.022,t+1.4);g.gain.setValueAtTime(0.022,t+dur-1.6);g.gain.exponentialRampToValueAtTime(0.0001,t+dur+0.4);
+      o.connect(g);g.connect(f);o.start(t);o.stop(t+dur+0.5)}}}
+  // bass
+  const root=ch[0]-24,fifth=ch[2]-24;
+  const bp=m==='tense'?{0:root,2:root,4:fifth,6:root,8:root,10:fifth,12:root,14:root+12}:(m==='storm'||m==='night'||m==='menu')?{0:root,10:fifth}:{0:root,6:root,10:fifth,14:root+12};
+  if(bp[st]!=null){mOsc('triangle',nf(bp[st]),t,spb*(st===0?3.2:1.6),0.32,L.bass,0.01);mOsc('sine',nf(bp[st]),t,spb*(st===0?3.4:1.8),0.25,L.bass,0.01)}
+  // highlife-style guitar picking
+  const gp=(m==='menu'||m==='night'||m==='storm')?[0,6,8,12]:[0,2,3,6,8,10,11,14];
+  if(gp.includes(st)){const seq=[ch[1],ch[2],ch[3],ch[2],ch[1]+12,ch[2]];const n=seq[MUS.gIdx++%seq.length]+(m==='night'?0:12);
+    const bpf=ctx.createBiquadFilter();bpf.type='bandpass';bpf.frequency.value=1900;bpf.Q.value=0.7;bpf.connect(L.gtr);
+    const send=ctx.createGain();send.gain.value=0.35;bpf.connect(send);send.connect(MUS.dly);
+    mOsc('triangle',nf(n),t,0.32,0.22,bpf,0.003);mOsc('square',nf(n),t,0.09,0.03,bpf,0.002)}
+  // shaker on every sixteenth
+  if(SFX.white){const s=ctx.createBufferSource();s.buffer=SFX.white;const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=6500;const g=ctx.createGain();
+    const pk=st%4===2?0.07:st%2?0.025:0.04;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(pk,t+0.004);g.gain.exponentialRampToValueAtTime(0.0001,t+0.05);
+    s.connect(hp);hp.connect(g);g.connect(L.shk);s.start(t,Math.random());s.stop(t+0.07)}
+  // soft kick
+  if(st===0||st===8||(m==='tense'&&st===11)){const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(115,t);o.frequency.exponentialRampToValueAtTime(42,t+0.13);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.5,t+0.004);g.gain.exponentialRampToValueAtTime(0.0001,t+0.24);o.connect(g);g.connect(L.kick);o.start(t);o.stop(t+0.3)}
+  // bell pattern
+  if([0,3,6,10,12].includes(st)){mOsc('sine',2093,t,0.12,0.05,L.bell,0.002);mOsc('sine',3140,t,0.06,0.018,L.bell,0.002)}
+}
 const MIN_GAP={arrive:1.2,depart:1.2,svc:0.25,tug:0.6,click:0.05,thunder:0.8};
 function play(name){
   if(!SFX.ctx||!SFX.on)return;const now=SFX.ctx.currentTime,gap=MIN_GAP[name]??0.4;
@@ -2065,7 +2131,7 @@ const DAILY_TIPS=['Fuel is where most FBOs make their money. A few cents per lit
   'A second fuel bowser is a sound early investment. Almost every aircraft needs fuel.',
   'Departures have a ten-minute grace period after their scheduled time before any penalty applies.'];
 const LATE_GRACE=10;
-const SET=Object.assign({apCam:true,autoPause:true,briefings:true,checkins:true,tips:true,allFeatures:false},(()=>{try{return JSON.parse(localStorage.getItem('aerostasis-settings')||'{}')}catch(e){return {}}})());
+const SET=Object.assign({music:true,musicVol:0.5,apCam:true,autoPause:true,briefings:true,checkins:true,tips:true,allFeatures:false},(()=>{try{return JSON.parse(localStorage.getItem('aerostasis-settings')||'{}')}catch(e){return {}}})());
 function saveSet(){try{localStorage.setItem('aerostasis-settings',JSON.stringify(SET))}catch(e){}}
 function has(k){return SET.allFeatures||!S||S.day>=FEAT[k]}
 function newToday(){if(SET.allFeatures)return null;return Object.keys(FEAT).find(k=>FEAT[k]===S.day)||null}
@@ -2075,6 +2141,9 @@ function settingsHTML(){
   const row=(k,t,d)=>`<div class="item"><h5>${t}</h5><p>${d}</p><div class="buy"><b>${SET[k]?'On':'Off'}</b><button class="btn ${SET[k]?'':'primary'}" data-set="${k}">${SET[k]?'Turn off':'Turn on'}</button></div></div>`;
   return `<span class="dir-sign">Settings</span><h2>How you like to play</h2><p class="lede">Settings are saved on this device.</p>
   <div class="shop">${row('autoPause','Pause for decisions','The game pauses when a charter request, a front-desk request, a late aircraft or a new event needs your attention.')}
+  <div class="item"><h5>Music</h5><p>An original soundtrack that follows the day: calm in the office, a gentle groove on the ramp, darker in a storm and quieter at night. Press N to switch it on or off.</p>
+    <div class="ctl" style="margin:0"><label for="musVol">Music volume</label><output id="musVolO">${Math.round((SET.musicVol??0.5)*100)}%</output><input type="range" id="musVol" min="0" max="100" step="5" value="${Math.round((SET.musicVol??0.5)*100)}"></div>
+    <div class="buy"><b>${SET.music!==false?'On':'Off'}</b><button class="btn ${SET.music!==false?'':'primary'}" data-set="music">${SET.music!==false?'Turn off':'Turn on'}</button></div></div>
   ${row('apCam','Landing camera','A small window follows each aircraft on final approach, seen from the ground below the approach path. Select Watch to see the landing full screen at normal speed.')}
   ${row('briefings','Morning briefings','A short briefing with the day’s schedule, goals and a tip before each shift. Briefings always appear on days that introduce something new.')}
   ${row('checkins','Midday check-ins','A pause at 12:30 during your first week to review how the shift is going.')}
@@ -2314,7 +2383,7 @@ function updateProj(){
   const sh=shareFor(p),n=mDay()*sh;
   o.innerHTML=`Projected market share <b>${pct(sh)}</b> · about <b>${Math.max(2,Math.round(n))}</b> aircraft a day · fuel margin on a midsize uplift <b>${money(m*LIT[1])}</b>`;
 }
-document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('.planbox'))updateProj()});
+document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('.planbox'))updateProj();if(e.target.id==='musVol'){SET.musicVol=+e.target.value/100;saveSet();const o=$('#musVolO');if(o)o.textContent=e.target.value+'%'}});
 document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('.planbox'))updateProj()});
 function applyPrices(withSupply){const p=readPrices();S.price.fuel=p.fuel;S.price.idx=p.idx;S.price.waiver=p.waiver;
   if(withSupply){S.supply=planSupply;S.mkt.lock=planSupply==='fixed'?+(S.mkt.p*1.03).toFixed(3):null}}
